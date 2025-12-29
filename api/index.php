@@ -1,14 +1,15 @@
 <?php
 
 /**
- * Robust Vercel Entry Point for Laravel
+ * Advanced Vercel Entry Point for Laravel
+ * Fixed for Serverless Path Issues
  */
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 try {
-    // 1. Move Laravel's storage to /tmp
+    // 1. Prepare Writable Storage in /tmp
     $storagePath = '/tmp/storage';
     $dirs = [
         $storagePath . '/framework/views',
@@ -24,32 +25,44 @@ try {
         }
     }
 
-    // 2. Setup SQLite in /tmp
+    // 2. Setup SQLite Database in /tmp
     $dbPath = '/tmp/database.sqlite';
     if (!file_exists($dbPath)) {
         @touch($dbPath);
     }
 
-    // 3. Inject critical environment variables
+    // 3. Set Environment for the Runtime
+    putenv("APP_CONFIG_CACHE=/tmp/config.php");
+    putenv("APP_ROUTES_CACHE=/tmp/routes.php");
+    putenv("APP_SERVICES_CACHE=/tmp/services.php");
+    putenv("APP_PACKAGES_CACHE=/tmp/packages.php");
+    
     putenv("VIEW_COMPILED_PATH=$storagePath/framework/views");
-    putenv("SESSION_PATH=$storagePath/framework/sessions");
-    putenv("CACHE_PATH=$storagePath/framework/cache");
-    putenv("LOG_PATH=$storagePath/logs/laravel.log");
     putenv("DB_DATABASE=$dbPath");
     putenv("DB_CONNECTION=sqlite");
 
-    // 4. Load the Laravel application
-    require __DIR__ . '/../public/index.php';
+    // 4. Bootstrap Laravel
+    require __DIR__ . '/../vendor/autoload.php';
+    $app = require_once __DIR__ . '/../bootstrap/app.php';
+
+    // 5. Override Storage Path at Runtime
+    $app->useStoragePath($storagePath);
+
+    // 6. Handle the Request
+    $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+
+    $response = $kernel->handle(
+        $request = Illuminate\Http\Request::capture()
+    );
+
+    $response->send();
+
+    $kernel->terminate($request, $response);
 
 } catch (\Throwable $e) {
-    // Catch EVERYTHING (Exceptions and Errors)
     http_response_code(500);
-    echo "<html><body style='font-family: sans-serif; padding: 20px;'>";
-    echo "<h1 style='color: #e53e3e;'>Critical Boot Error</h1>";
-    echo "<p>The application failed to start on Vercel.</p>";
-    echo "<div style='background: #f7fafc; border: 1px solid #cbd5e0; padding: 15px;'>";
-    echo "<strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "<br><br>";
-    echo "<strong>File:</strong> " . htmlspecialchars($e->getFile()) . " (Line: " . $e->getLine() . ")<br><br>";
-    echo "<strong>Trace:</strong><pre style='font-size: 12px;'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
-    echo "</div></body></html>";
+    echo "<h1>Deployment Error</h1>";
+    echo "<p><strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . " (Line: " . $e->getLine() . ")</p>";
+    echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
 }
