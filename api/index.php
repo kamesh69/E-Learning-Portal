@@ -36,5 +36,16 @@ putenv("LOG_PATH=$storagePath/logs/laravel.log");
 putenv("DB_DATABASE=$dbPath");
 putenv("DB_CONNECTION=sqlite");
 
-// 5. Load the Laravel application
-require __DIR__ . '/../public/index.php';
+// 5. Error reporting for debugging (Vercel logs)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// 6. Load the Laravel application
+try {
+    require __DIR__ . '/../public/index.php';
+} catch (\Exception $e) {
+    echo "<h1>Laravel Initialization Error</h1>";
+    echo "<p>" . $e->getMessage() . "</p>";
+    echo "<pre>" . $e->getTraceAsString() . "</pre>";
+}
