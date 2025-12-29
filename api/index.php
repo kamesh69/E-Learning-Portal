@@ -27,8 +27,10 @@ try {
 
     // 2. Setup SQLite Database in /tmp
     $dbPath = '/tmp/database.sqlite';
+    $isNewDb = false;
     if (!file_exists($dbPath)) {
         @touch($dbPath);
+        $isNewDb = true;
     }
 
     // 3. Set Environment for the Runtime
@@ -48,7 +50,14 @@ try {
     // 5. Override Storage Path at Runtime
     $app->useStoragePath($storagePath);
 
-    // 6. Handle the Request
+    // 6. Handle Auto-Migration for Serverless
+    if ($isNewDb) {
+        $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+        $kernel->call('migrate', ['--force' => true]);
+        $kernel->call('db:seed', ['--class' => 'CourseSeeder', '--force' => true]);
+    }
+
+    // 7. Handle the Request
     $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
     $response = $kernel->handle(
