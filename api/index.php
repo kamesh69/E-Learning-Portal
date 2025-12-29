@@ -24,13 +24,11 @@ foreach ($dirs as $dir) {
 }
 
 // 3. Initialize empty database if missing
-$isNewDb = false;
 if (!file_exists($dbPath)) {
     touch($dbPath);
-    $isNewDb = true;
 }
 
-// 4. Inject runtime environment variables
+// 4. Inject runtime environment variables to override cached config path issues
 putenv("VIEW_COMPILED_PATH=$storagePath/framework/views");
 putenv("SESSION_PATH=$storagePath/framework/sessions");
 putenv("CACHE_PATH=$storagePath/framework/cache");
@@ -40,15 +38,3 @@ putenv("DB_CONNECTION=sqlite");
 
 // 5. Load the Laravel application
 require __DIR__ . '/../public/index.php';
-
-// 6. Optional: Auto-migrate for demo purposes
-// This ensures that the first time the app wakes up, it sets up the tables.
-if ($isNewDb) {
-    try {
-        \Illuminate\Support\Facades\Artisan::call('migrate --force');
-        \Illuminate\Support\Facades\Artisan::call('db:seed --class=CourseSeeder --force');
-    } catch (\Exception $e) {
-        // Log errors to Vercel console for debugging
-        error_log("Laravel Setup Error: " . $e->getMessage());
-    }
-}

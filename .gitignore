@@ -21,3 +21,5 @@ yarn-error.log
 composer.phar
 run_app.bat
 setup_portable.ps1
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
